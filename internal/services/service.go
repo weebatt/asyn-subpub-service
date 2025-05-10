@@ -6,6 +6,7 @@ import (
 	"context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
 )
 
@@ -14,9 +15,12 @@ type Server struct {
 	subpub subpub.SubPub
 }
 
-func NewServer() *Server {
+func NewServer(subpub subpub.SubPub) *Server {
+	if subpub == nil {
+		panic("subpub is nil")
+	}
 	return &Server{
-		subpub: subpub.NewSubPub(),
+		subpub: subpub,
 	}
 }
 
@@ -34,10 +38,10 @@ func (s *Server) Subscribe(req *pb.SubscribeRequest, stream pb.PubSub_SubscribeS
 	return nil
 }
 
-func (s *Server) Publish(ctx context.Context, req *pb.PublishRequest) (*pb.PublishRequest, error) {
-	err := s.subpub.Publish(ctx, req.Key, req.Data)
+func (s *Server) Publish(ctx context.Context, req *pb.PublishRequest) (*emptypb.Empty, error) {
+	err := s.subpub.Publish(req.Key, req.Data)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish: %v", err)
 	}
-	return &pb.PublishRequest{}, nil
+	return &emptypb.Empty{}, nil
 }

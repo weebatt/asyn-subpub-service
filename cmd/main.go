@@ -19,28 +19,37 @@ import (
 )
 
 func main() {
-	// Initialize env variables
-	configPath := os.Getenv("CONFIG_PATH")
+	if err := run(); err != nil {
+		log.Fatalf("Application failed: %v", err)
+	}
+}
 
-	// Initialize logger
+func run() error {
+	// Initialize context and logger
 	ctx := context.Background()
 	ctx, _ = logger.New(ctx)
 
 	// Initialize config
+	configPath := os.Getenv("CONFIG_PATH")
 	cfg, err := config.New(configPath)
 	if err != nil {
 		logger.GetLoggerFromContext(ctx).Fatal("failed reading config", zap.Error(err))
+		return err
 	}
 
+	// Create listener
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Server.GRPCPort))
 	if err != nil {
 		logger.GetLoggerFromContext(ctx).Fatal("failed to listen", zap.Error(err))
+		return err
 	}
 
+	// Initialize subpub and gRPC server
 	subPub := subpub.NewSubPub()
 	s := grpc.NewServer()
-	pb.RegisterPubSubServer(s, services.NewServer().UnimplementedPubSubServer)
+	pb.RegisterPubSubServer(s, services.NewServer(subPub))
 
+	// Start server in a goroutine
 	go func() {
 		logger.GetLoggerFromContext(ctx).Info("Server listening on", zap.String("port", strconv.Itoa(cfg.Server.GRPCPort)))
 		if err := s.Serve(lis); err != nil {
@@ -48,15 +57,19 @@ func main() {
 		}
 	}()
 
+	// Handle signals for graceful shutdown
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 
+	// Perform graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := subPub.Close(ctx); err != nil {
 		logger.GetLoggerFromContext(ctx).Fatal("failed to close subPub", zap.Error(err))
+		return err
 	}
 	s.GracefulStop()
 	log.Println("Server stopped gracefully")
+	return nil
 }
