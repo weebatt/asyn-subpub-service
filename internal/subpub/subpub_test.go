@@ -10,7 +10,7 @@ import (
 
 func TestSubPub(t *testing.T) {
 	t.Run("Basic Subscribe and Publish", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		var received []interface{}
 		handler := func(msg interface{}) {
 			received = append(received, msg)
@@ -43,7 +43,7 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Subscribe to Closed SubPub", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if err := sp.Close(ctx); err != nil {
@@ -57,7 +57,7 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Multiple Subscribers", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		var received1, received2 []interface{}
 		handler1 := func(msg interface{}) {
 			received1 = append(received1, msg)
@@ -93,14 +93,14 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Publish to Non-Existent Subject", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		if err := sp.Publish("nonexistent", "msg"); err != nil {
 			t.Errorf("Expected no error for nonexistent subject, got %v", err)
 		}
 	})
 
 	t.Run("Full Buffer", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		var received []interface{}
 		handler := func(msg interface{}) {
 			received = append(received, msg)
@@ -123,7 +123,7 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Double Unsubscribe", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		sub, err := sp.Subscribe("test", func(msg interface{}) {})
 		if err != nil {
 			t.Fatalf("Subscribe failed: %v", err)
@@ -134,7 +134,7 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Close with Timeout", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		_, err := sp.Subscribe("test", func(msg interface{}) {
 			time.Sleep(time.Second)
 		})
@@ -157,7 +157,7 @@ func TestSubPub(t *testing.T) {
 	})
 
 	t.Run("Concurrent Subscribe and Publish", func(t *testing.T) {
-		sp := NewSubPub()
+		sp := NewSubPub(100)
 		var wg sync.WaitGroup
 		numSubscribers := 10
 		numMessages := 50

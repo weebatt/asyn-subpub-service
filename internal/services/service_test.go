@@ -14,7 +14,7 @@ import (
 
 func TestNewServer(t *testing.T) {
 	t.Run("Valid SubPub", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		server := NewServer(sp)
 		if server == nil {
 			t.Fatal("NewServer returned nil")
@@ -36,7 +36,7 @@ func TestNewServer(t *testing.T) {
 
 func TestServerPublish(t *testing.T) {
 	t.Run("Successful Publish", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		server := NewServer(sp)
 		req := &pb.PublishRequest{Key: "test", Data: "hello"}
 		resp, err := server.Publish(context.Background(), req)
@@ -51,13 +51,12 @@ func TestServerPublish(t *testing.T) {
 
 func TestServerSubscribe(t *testing.T) {
 	t.Run("Successful Subscribe", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		server := NewServer(sp)
 		req := &pb.SubscribeRequest{Key: "test"}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		// Мок для стрима
 		stream := &mockPubSubStream{
 			send: func(event *pb.Event) error {
 				if event.Data != "hello" {
@@ -68,7 +67,6 @@ func TestServerSubscribe(t *testing.T) {
 			ctx: ctx,
 		}
 
-		// Запускаем подписку в отдельной горутине
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
@@ -78,7 +76,6 @@ func TestServerSubscribe(t *testing.T) {
 			}
 		}()
 
-		// Публикуем сообщение
 		go func() {
 			time.Sleep(50 * time.Millisecond)
 			server.Publish(context.Background(), &pb.PublishRequest{Key: "test", Data: "hello"})
@@ -88,13 +85,12 @@ func TestServerSubscribe(t *testing.T) {
 	})
 
 	t.Run("Subscribe with Stream Error", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		server := NewServer(sp)
 		req := &pb.SubscribeRequest{Key: "test"}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		// Мок для стрима с ошибкой
 		stream := &mockPubSubStream{
 			send: func(event *pb.Event) error {
 				return status.Error(codes.Internal, "stream error")
@@ -102,21 +98,19 @@ func TestServerSubscribe(t *testing.T) {
 			ctx: ctx,
 		}
 
-		// Запускаем подписку
 		if err := server.Subscribe(req, stream); err != nil {
 			t.Errorf("Subscribe failed: %v", err)
 		}
 
-		// Публикуем сообщение
 		server.Publish(context.Background(), &pb.PublishRequest{Key: "test", Data: "hello"})
-		time.Sleep(50 * time.Millisecond) // Даем время на обработку
+		time.Sleep(50 * time.Millisecond)
 	})
 
 	t.Run("Subscribe with SubPub Error", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		sp.Close(ctx) // Закрываем SubPub
+		sp.Close(ctx)
 
 		server := NewServer(sp)
 		req := &pb.SubscribeRequest{Key: "test"}
@@ -135,12 +129,11 @@ func TestServerSubscribe(t *testing.T) {
 	})
 
 	t.Run("Concurrent Subscribe and Publish", func(t *testing.T) {
-		sp := subpub.NewSubPub()
+		sp := subpub.NewSubPub(100)
 		server := NewServer(sp)
 		var wg sync.WaitGroup
 		numGoroutines := 5
 
-		// Конкурентные подписки
 		for i := 0; i < numGoroutines; i++ {
 			wg.Add(1)
 			go func() {
@@ -157,7 +150,6 @@ func TestServerSubscribe(t *testing.T) {
 			}()
 		}
 
-		// Конкурентные публикации
 		for i := 0; i < numGoroutines; i++ {
 			wg.Add(1)
 			go func() {
@@ -178,7 +170,6 @@ func TestServerSubscribe(t *testing.T) {
 	})
 }
 
-// Мок для gRPC стрима
 type mockPubSubStream struct {
 	send func(*pb.Event) error
 	ctx  context.Context
