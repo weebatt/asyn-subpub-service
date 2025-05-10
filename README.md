@@ -1,3 +1,11 @@
+## Инструкция по использованию
+Генерация protobuf 
+
+```bash
+protoc --go_out=./pb --go_opt=paths=source_relative --go-grpc_out=./pb  --go-grpc_opt=paths=source_relative ./proto/api/*proto
+```
+
+
 ## Задание состоит из 2 частей.
 
 ### Часть 1. Реализация пакета subpub
@@ -51,27 +59,27 @@ func NewSubPub() SubPub {
          
 ### Protobuf-схема gRPC сервиса:
 ```go
-import "google/protobuf/empty.proto";
-
 syntax = "proto3";
 
-service PubSub {
-    rpc Subscribe(SubscribeRequest) returns (stream Event)
+import "google/protobuf/empty.proto";
 
-    rpc Publish(PublishRequest) returns (google.protobuf.Empty)
+service PubSub {
+rpc Subscribe(SubscribeRequest) returns (stream Event);
+
+rpc Publish(PublishRequest) returns (google.protobuf.Empty);
 }
 
 message SubscribeRequest {
-    string key = 1;
+string key = 1;
 }
 
 message PublishRequest {
-    string key = 1;
-    string data = 2;
+string key = 1;
+string data = 2;
 }
 
 message Event {
-    string data = 1;
+string data = 1;
 }
 ```
 ### Дополнительные требования
@@ -85,10 +93,11 @@ google.golang.org/grpc/codes
 ```
 
 ### Ожидаемое в решении
-в качестве критериев успешности и неуспешности запросов к сервису.\
+В качестве критериев успешности и неуспешности запросов к сервису.\
 Что еще ожидается в решении:
 - Обязательно должно быть описание того, как работает сервис и как его собирать.
 - У сервиса должен быть свой конфиг, куда можно прописать порты и прочие параметры (на ваше усмотрение).
 - Логирование.
-- Приветствуется использование известных паттернов при разработке микросервисов на Со (например, dependency injection, graceful shutdown и пр.). Если таковые будут
+- Приветствуется использование известных паттернов при разработке микросервисов на Go (например, dependency injection, graceful shutdown и пр.). Если таковые будут
   использоваться, то просьба упомянуть его в описании решения.
+
