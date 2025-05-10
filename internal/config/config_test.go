@@ -8,7 +8,6 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Тест 1: Корректный YAML-файл
 	t.Run("Valid YAML file", func(t *testing.T) {
 		yamlContent := `
 			server:

@@ -45,7 +45,7 @@ func run() error {
 	}
 
 	// Initialize subpub and gRPC server
-	subPub := subpub.NewSubPub()
+	subPub := subpub.NewSubPub(cfg.SubPub.BufferSize)
 	s := grpc.NewServer()
 	pb.RegisterPubSubServer(s, services.NewServer(subPub))
 

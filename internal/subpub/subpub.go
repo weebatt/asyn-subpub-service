@@ -36,16 +36,18 @@ type subscription struct {
 }
 
 type subPub struct {
-	mu      sync.Mutex
-	subs    map[string][]*subscription
-	closed  bool
-	subject string
-	wg      sync.WaitGroup
+	mu         sync.Mutex
+	subs       map[string][]*subscription
+	closed     bool
+	subject    string
+	wg         sync.WaitGroup
+	bufferSize int
 }
 
-func NewSubPub() SubPub {
+func NewSubPub(bufferSize int) SubPub {
 	return &subPub{
-		subs: make(map[string][]*subscription),
+		subs:       make(map[string][]*subscription),
+		bufferSize: bufferSize,
 	}
 }
 
@@ -66,7 +68,7 @@ func (s *subscription) Unsubscribe() {
 			break
 		}
 	}
-	close(s.ch) // Закрываем канал только здесь
+	close(s.ch)
 }
 
 func (sp *subPub) Subscribe(subject string, cb MessageHandler) (Subscription, error) {
@@ -76,7 +78,7 @@ func (sp *subPub) Subscribe(subject string, cb MessageHandler) (Subscription, er
 		return nil, errors.New("subpub is closed")
 	}
 	sub := &subscription{
-		ch:     make(chan interface{}, 100),
+		ch:     make(chan interface{}, sp.bufferSize),
 		cb:     cb,
 		subpub: sp,
 	}
@@ -116,7 +118,6 @@ func (sp *subPub) Close(ctx context.Context) error {
 	}
 	sp.closed = true
 
-	// Закрываем только незакрытые каналы подписок
 	for subject, subs := range sp.subs {
 		for _, sub := range subs {
 			sub.mu.Lock()
@@ -130,7 +131,6 @@ func (sp *subPub) Close(ctx context.Context) error {
 	}
 	sp.mu.Unlock()
 
-	// Ждем завершения всех горутин
 	done := make(chan struct{})
 	go func() {
 		sp.wg.Wait()
