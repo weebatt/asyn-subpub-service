@@ -1,9 +1,9 @@
 package subpub
 
 import (
-	"asyn-subpub-service/pkg/logger"
 	"context"
 	"errors"
+	"log"
 	"sync"
 )
 
@@ -20,7 +20,7 @@ type SubPub interface {
 	Subscribe(subject string, cb MessageHandler) (Subscription, error)
 
 	// Publish publishes the msg argument to the give subject.
-	Publish(ctx context.Context, subject string, msg interface{}) error
+	Publish(subject string, msg interface{}) error
 
 	// Close will shutdown the sub-pub system.
 	// May be blocked by data deliver until the context is canceled.
@@ -31,7 +31,7 @@ type subscription struct {
 	ch     chan interface{}
 	cb     MessageHandler
 	subpub *subPub
-	closed bool // Флаг для отслеживания закрытия
+	closed bool
 	mu     sync.Mutex
 }
 
@@ -91,7 +91,7 @@ func (sp *subPub) Subscribe(subject string, cb MessageHandler) (Subscription, er
 	return sub, nil
 }
 
-func (sp *subPub) Publish(ctx context.Context, subject string, msg interface{}) error {
+func (sp *subPub) Publish(subject string, msg interface{}) error {
 	sp.mu.Lock()
 	subs, ok := sp.subs[subject]
 	sp.mu.Unlock()
@@ -102,7 +102,7 @@ func (sp *subPub) Publish(ctx context.Context, subject string, msg interface{}) 
 		select {
 		case sub.ch <- msg:
 		default:
-			logger.GetLoggerFromContext(ctx).Info("subpub buffer is full")
+			log.Println("subpub buffer is full")
 		}
 	}
 	return nil
@@ -115,8 +115,17 @@ func (sp *subPub) Close(ctx context.Context) error {
 		return nil
 	}
 	sp.closed = true
-	// Очищаем подписки, но не закрываем каналы, так как это делает Unsubscribe
-	for subject := range sp.subs {
+
+	// Закрываем только незакрытые каналы подписок
+	for subject, subs := range sp.subs {
+		for _, sub := range subs {
+			sub.mu.Lock()
+			if !sub.closed {
+				sub.closed = true
+				close(sub.ch)
+			}
+			sub.mu.Unlock()
+		}
 		delete(sp.subs, subject)
 	}
 	sp.mu.Unlock()

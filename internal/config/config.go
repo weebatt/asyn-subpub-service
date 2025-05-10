@@ -6,10 +6,10 @@ import (
 
 type Config struct {
 	Server struct {
-		GRPCPort int `yaml:"GRPC_PORT" env-default:"50051"`
+		GRPCPort int `yaml:"GRPC_PORT" env:"GRPC_PORT" env-default:"50051"`
 	}
 	SubPub struct {
-		BufferSize int `yaml:"buffer_size" env-default:"100"`
+		BufferSize int `yaml:"BUFFER_SIZE" env:"BUFFER_SIZE" env-default:"100"`
 	}
 }
 
